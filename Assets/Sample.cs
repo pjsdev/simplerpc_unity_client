@@ -24,9 +24,9 @@ public class Sample : MonoBehaviour
 	{
 		Debug.LogFormat("The server welcomed me: {0}", data["msg"]);
 
-		JSONClass rpcData = new JSONClass();
-		rpcData.Add("msg", "Thanks for having me simplerpc");
-		client.rpc("thanks", rpcData);
+		JSONClass args = new JSONClass();
+		args.Add("msg", "Thanks for having me simplerpc");
+		client.rpc("thanks", args);
 	}
 
 	void handleConnect()
