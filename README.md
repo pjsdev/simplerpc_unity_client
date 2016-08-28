@@ -21,10 +21,14 @@ public class Sample : MonoBehaviour
         messages.on("welcome", handleWelcome);
 
         client = new Client("127.0.0.1", 8000, messages);
-        client.OnFail(handleFail);
         client.OnDisconnect(handleDisconnect);
         client.OnConnect(handleConnect);
         client.Start();
+    }
+
+    void resCB(Client _, string opname, JSONNode data)
+    {
+        Debug.LogFormat("Response received: {0}", opname);  
     }
 
     void handleWelcome(JSONNode data)
@@ -34,6 +38,9 @@ public class Sample : MonoBehaviour
         JSONClass args = new JSONClass();
         args.Add("msg", "Thanks for having me simplerpc");
         client.rpc("thanks", args);
+
+        args["msg"] = "This time with a CB";
+        client.rpc("thanks", args, resCB);
     }
 
     void handleConnect()

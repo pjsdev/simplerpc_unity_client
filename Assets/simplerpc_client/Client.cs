@@ -16,16 +16,19 @@ namespace LudoGear.SimpleRPC
 		const int readSize = 1024;
 		private byte[] readBuffer = new byte[readSize];
 		TcpClient tcp;
-		System.Action<JSONNode> failCallback;
-		System.Action disconnectCallback;
-		System.Action connectCallback;
+
+		Action disconnectCallback;
+		Action connectCallback;
 		string dangling = "";
+
+		Queue<Action<Client, string, JSONNode>> responseCallbacks;
 
 		string host;
 		int port;
 
 		public Client (string host, int port, BaseHandler handler) 
 		{
+			responseCallbacks = new Queue<Action<Client, string, JSONNode>>();
 			tcp = new TcpClient();
 			this.host = host;
 			this.port = port;
@@ -52,11 +55,6 @@ namespace LudoGear.SimpleRPC
 			tcp.Close();
 		}
 
-		public void OnFail(System.Action<JSONNode> cb)
-		{
-			failCallback = cb;	
-		}
-
 		public void OnConnect(System.Action cb)
 		{
 			connectCallback = cb;
@@ -67,8 +65,14 @@ namespace LudoGear.SimpleRPC
 			disconnectCallback = cb;
 		}
 			
-		public void rpc(string opname, JSONNode data)
+		public void rpc(string opname, JSONNode data, Action<Client, string, JSONNode> cb = null)
 		{
+			if(cb == null)
+			{
+				cb = (_,__,___)=>{};	
+			}
+
+			responseCallbacks.Enqueue(cb);
 			string payload = Payload.toString(opname, data);
 			this.SendData(payload);
 		}
@@ -122,14 +126,13 @@ namespace LudoGear.SimpleRPC
 				{
 					RPCData rpc = Payload.fromString(pkg);
 
-					if(rpc.opname == "FAIL" && failCallback != null)
+					if(rpc.opname == "FAIL" || rpc.opname == "OKAY")
 					{
-						failCallback(rpc.data);	
+						var cb = responseCallbacks.Dequeue();
+						cb(this, rpc.opname, rpc.data);
 					}
-					else 
-					{
-						this.handler.call(this, rpc.opname, rpc.data);
-					}
+						
+					this.handler.call(this, rpc.opname, rpc.data);
 				}
 
 				// Start a new asynchronous read into readBuffer.
